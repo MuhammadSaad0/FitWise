@@ -1,0 +1,21 @@
+{
+  "name": "FitWise",
+  "short_name": "FitWise",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0c0a09",
+  "theme_color": "#0c0a09",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn.jsdelivr.net/gh/lucide-icons/lucide/icons/dumbbell.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "https://cdn.jsdelivr.net/gh/lucide-icons/lucide/icons/dumbbell.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
