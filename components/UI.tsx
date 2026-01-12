@@ -14,12 +14,18 @@ export const Card: React.FC<{ children: React.ReactNode; className?: string; onC
 // --- Button Components ---
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'contrast';
+  size?: 'sm' | 'md';
   icon?: LucideIcon;
 }
 
-export const Button: React.FC<ButtonProps> = ({ variant = 'primary', icon: Icon, children, className = '', ...props }) => {
-  const baseStyles = "inline-flex items-center justify-center gap-2 px-6 py-3 rounded font-mono font-bold tracking-tight transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-950 disabled:opacity-50 disabled:cursor-not-allowed uppercase text-sm";
+export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md', icon: Icon, children, className = '', ...props }) => {
+  const baseStyles = "inline-flex items-center justify-center gap-2 rounded font-mono font-bold tracking-tight transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-950 disabled:opacity-50 disabled:cursor-not-allowed uppercase";
   
+  const sizeStyles = {
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-6 py-3 text-sm"
+  };
+
   const variants = {
     primary: "bg-stone-800 text-stone-200 hover:bg-stone-700 hover:text-white border border-stone-700 focus:ring-stone-600",
     contrast: "bg-stone-200 text-stone-950 hover:bg-white hover:scale-[1.02] shadow-lg shadow-stone-900/50",
@@ -29,8 +35,8 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', icon: Icon,
   };
 
   return (
-    <button className={`${baseStyles} ${variants[variant]} ${className}`} {...props}>
-      {Icon && <Icon size={16} />}
+    <button className={`${baseStyles} ${sizeStyles[size]} ${variants[variant]} ${className}`} {...props}>
+      {Icon && <Icon size={size === 'sm' ? 14 : 16} />}
       {children}
     </button>
   );

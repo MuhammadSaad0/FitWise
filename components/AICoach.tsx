@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Volume2, Loader2, StopCircle } from 'lucide-react';
 import { Workout } from '../types';
-import { Card, SectionHeader, Button } from './UI';
-import { getCoachFeedback } from '../services/geminiService';
+import { SectionHeader, Button } from './UI';
+import { getCoachFeedback, generateCoachAudio } from '../services/geminiService';
 
 interface AICoachProps {
   workouts: Workout[];
@@ -15,13 +16,46 @@ const COACHES = [
   { name: "Ronnie Coleman", style: "Heavy Weight", initials: "RC", color: "bg-yellow-900/20 text-yellow-400 border-yellow-800" }
 ];
 
+// Helper to decode raw PCM data from Gemini
+function decode(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
 export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  
+  // Audio State
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      stopAudio();
+    };
+  }, []);
+
+  const stopAudio = () => {
+    if (sourceRef.current) {
+      try { sourceRef.current.stop(); } catch (e) {}
+      sourceRef.current = null;
+    }
+    setIsPlaying(false);
+  };
 
   const handleEvaluate = async () => {
     if (!selectedCoach) return;
+    stopAudio();
     setLoading(true);
     setFeedback(null);
 
@@ -52,11 +86,78 @@ export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
     }
   };
 
+  const handlePlayAudio = async () => {
+    if (!feedback || !selectedCoach) return;
+
+    // 1. Initialize AudioContext immediately on user interaction
+    if (!audioContextRef.current) {
+      // Allow browser to choose sample rate (usually 44.1k or 48k)
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioContextRef.current;
+
+    // Ensure context is running (mobile browsers often suspend it)
+    if (ctx.state === 'suspended') {
+      await ctx.resume();
+    }
+
+    if (isPlaying) {
+      stopAudio();
+      return;
+    }
+
+    setAudioLoading(true);
+
+    try {
+      const base64Audio = await generateCoachAudio(feedback, selectedCoach);
+      if (!base64Audio) throw new Error("No audio generated");
+
+      // 2. Decode Base64 to Uint8Array
+      const pcmData = decode(base64Audio);
+      
+      // 3. Convert to Int16Array safely
+      // Ensure we are byte-aligned. If length is odd, slice off the last byte.
+      const byteLength = pcmData.length;
+      const alignedLength = byteLength % 2 === 0 ? byteLength : byteLength - 1;
+      
+      // Create a view on the buffer (or a copy if needed)
+      // Note: We use the buffer of the Uint8Array. 
+      // Ensure we start at the correct offset if pcmData was a slice (unlikely here as decode creates new)
+      const dataInt16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, alignedLength / 2);
+
+      // 4. Create AudioBuffer
+      // Gemini TTS is 24kHz Mono. We explicitly tell createBuffer the source rate is 24000.
+      // The AudioContext (ctx) will handle resampling if it's running at 48k.
+      const buffer = ctx.createBuffer(1, dataInt16.length, 24000);
+      const channelData = buffer.getChannelData(0);
+
+      // 5. Convert Int16 PCM to Float32 [-1.0, 1.0]
+      for (let i = 0; i < dataInt16.length; i++) {
+        channelData[i] = dataInt16[i] / 32768.0;
+      }
+
+      // 6. Play
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.onended = () => setIsPlaying(false);
+      sourceRef.current = source;
+      
+      source.start();
+      setIsPlaying(true);
+
+    } catch (e) {
+      console.error("Audio Playback Error", e);
+      alert("Failed to play audio. Please check your connection.");
+    } finally {
+      setAudioLoading(false);
+    }
+  };
+
   const currentCoach = COACHES.find(c => c.name === selectedCoach);
 
   // --- Lightweight Markdown Parser ---
   const parseInline = (text: string) => {
-    // Split by bold syntax **text**
     const parts = text.split(/(\*\*[^*]+\*\*)/g); 
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
@@ -72,15 +173,12 @@ export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
     
     for (let i = 0; i < lines.length; i++) {
       let line = lines[i].trim();
-      if (!line) continue; // Skip empty lines, margin handled by CSS
+      if (!line) continue;
 
-      // Handle Lists
       if (line.startsWith('- ') || line.startsWith('* ')) {
         const listItems = [];
-        // Capture consecutive list items
         listItems.push(line.substring(2));
         
-        // Peek forward
         while(i + 1 < lines.length && (lines[i+1].trim().startsWith('- ') || lines[i+1].trim().startsWith('* '))) {
            i++;
            listItems.push(lines[i].trim().substring(2));
@@ -96,7 +194,6 @@ export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
           </ul>
         );
       } else {
-        // Paragraphs
         elements.push(
           <p key={`p-${i}`} className="text-sm md:text-base font-mono leading-relaxed mb-4 last:mb-0 font-medium">
             {parseInline(line)}
@@ -115,7 +212,7 @@ export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
         {COACHES.map((coach) => (
           <button
             key={coach.name}
-            onClick={() => { setSelectedCoach(coach.name); setFeedback(null); }}
+            onClick={() => { setSelectedCoach(coach.name); setFeedback(null); stopAudio(); }}
             className={`
               relative p-6 rounded border text-left transition-all duration-300 group
               ${selectedCoach === coach.name 
@@ -155,7 +252,7 @@ export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
         <div className="animate-slideUp mt-16 flex flex-col md:flex-row gap-8 items-start">
           {/* Coach Avatar Representation */}
           <div className="shrink-0 flex flex-col items-center gap-3 mx-auto md:mx-0">
-             <div className={`w-24 h-24 rounded-full border-4 flex items-center justify-center shadow-xl ${currentCoach.color} bg-opacity-10 backdrop-blur-sm`}>
+             <div className={`w-24 h-24 rounded-full border-4 flex items-center justify-center shadow-xl ${currentCoach.color} bg-opacity-10 backdrop-blur-sm transition-transform ${isPlaying ? 'scale-110' : 'scale-100'}`}>
                 <span className="text-3xl font-black tracking-tighter">{currentCoach.initials}</span>
              </div>
              <div className="text-center">
@@ -166,14 +263,39 @@ export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
 
           {/* Speech Bubble */}
           <div className="relative flex-1 bg-stone-200 text-stone-900 p-8 rounded-2xl shadow-2xl">
-            {/* Speech bubble tail for desktop */}
+            {/* Desktop Tail */}
             <div className="hidden md:block absolute top-8 -left-3 w-6 h-6 bg-stone-200 transform rotate-45" />
-            {/* Speech bubble tail for mobile */}
+            {/* Mobile Tail */}
             <div className="md:hidden absolute -top-3 left-1/2 -ml-3 w-6 h-6 bg-stone-200 transform rotate-45" />
             
-            <h4 className="text-stone-500 text-[10px] font-bold uppercase tracking-widest mb-4 border-b border-stone-300 pb-2">
-               Critique
-            </h4>
+            <div className="flex justify-between items-center mb-4 border-b border-stone-300 pb-2">
+               <h4 className="text-stone-500 text-[10px] font-bold uppercase tracking-widest">
+                  Critique
+               </h4>
+               
+               <button 
+                 onClick={handlePlayAudio}
+                 disabled={audioLoading}
+                 className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide transition-all ${isPlaying ? 'bg-stone-950 text-white shadow-lg scale-105' : 'bg-stone-300 text-stone-600 hover:bg-stone-400'}`}
+               >
+                 {audioLoading ? (
+                   <Loader2 size={14} className="animate-spin" />
+                 ) : isPlaying ? (
+                   <>
+                     <span className="relative flex h-3 w-3">
+                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                       <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                     </span>
+                     <span>Stop</span>
+                   </>
+                 ) : (
+                   <>
+                     <Volume2 size={14} />
+                     <span>Listen</span>
+                   </>
+                 )}
+               </button>
+            </div>
             
             <div className="prose prose-stone max-w-none">
                 {renderMarkdown(feedback)}

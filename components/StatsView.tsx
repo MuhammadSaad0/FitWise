@@ -9,12 +9,13 @@ import { Card, SectionHeader } from './UI';
 
 interface StatsViewProps {
   workouts: Workout[];
+  customBodyParts?: Record<string, string>;
 }
 
 // Muted, earthy/concrete palette
 const COLORS = ['#57534e', '#78716c', '#a8a29e', '#d6d3d1', '#e7e5e4', '#44403c']; 
 
-export const StatsView: React.FC<StatsViewProps> = ({ workouts }) => {
+export const StatsView: React.FC<StatsViewProps> = ({ workouts, customBodyParts }) => {
   const [selectedExercise, setSelectedExercise] = useState('Bench Press');
   const [exerciseSearchOpen, setExerciseSearchOpen] = useState(false);
   const [metric, setMetric] = useState<'weight' | '1rm'>('1rm');
@@ -77,14 +78,14 @@ export const StatsView: React.FC<StatsViewProps> = ({ workouts }) => {
     const counts: Record<string, number> = {};
     workouts.forEach(w => {
       w.exercises.forEach(e => {
-        const part = e.type === 'cardio' ? 'Cardio' : getBodyPart(e.name);
+        const part = e.type === 'cardio' ? 'Cardio' : getBodyPart(e.name, customBodyParts);
         counts[part] = (counts[part] || 0) + e.sets.length; 
       });
     });
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value);
-  }, [workouts]);
+  }, [workouts, customBodyParts]);
 
   // 4. Exercise Progression
   const availableExercises = useMemo(() => {

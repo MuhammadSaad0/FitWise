@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { Workout } from "../types";
 
 const GEMINI_API_KEY = process.env.API_KEY || '';
@@ -56,6 +56,38 @@ export const getCoachFeedback = async (
     console.error("Gemini API Error:", error);
     throw error;
   }
+};
+
+export const generateCoachAudio = async (text: string, coachName: string) => {
+  if (!GEMINI_API_KEY) throw new Error("API Key missing");
+
+  // Map personas to voices
+  // Voices: Puck, Charon, Kore, Fenrir, Zephyr
+  let voiceName = 'Fenrir';
+  
+  if (coachName.includes("Mike Mentzer")) voiceName = 'Fenrir'; // Deep, philosophical
+  else if (coachName.includes("Arnold")) voiceName = 'Charon'; // Authoritative
+  else if (coachName.includes("Dorian")) voiceName = 'Puck'; // Intense
+  else if (coachName.includes("Goggins")) voiceName = 'Zephyr'; // Fast/Standard
+  else if (coachName.includes("Ronnie")) voiceName = 'Charon'; // Deep/Loud
+
+  // Clean text of markdown for better speech
+  const cleanText = text.replace(/[*_#`]/g, '');
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash-preview-tts",
+    contents: [{ parts: [{ text: cleanText }] }],
+    config: {
+      responseModalities: [Modality.AUDIO],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: { voiceName }
+        }
+      }
+    }
+  });
+
+  return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
 };
 
 export const getProgressionInsight = async (

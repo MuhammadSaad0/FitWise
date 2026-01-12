@@ -39,12 +39,18 @@ export const DEFAULT_EXERCISES: string[] = [
   "Pull Up", "Dumbbell Row", "Lunges", "Leg Press", 
   "Face Pull", "Bicep Curl", "Tricep Extension", "Lateral Raise",
   "Push Up", "Dip", "Skullcrusher", "Calf Raise", "Bulgarian Split Squat",
-  "Romanian Deadlift", "Incline Bench Press"
+  "Romanian Deadlift", "Incline Bench Press", "Hammer Curl", "Preacher Curl",
+  "Leg Extension", "Leg Curl", "Plank", "Crunch", "Russian Twist", "Hanging Leg Raise",
+  "Cable Fly", "Lat Pulldown", "Seated Row", "Front Raise", "Reverse Fly", "Wrist Curl"
 ];
 
 export const DEFAULT_CARDIO_EXERCISES: string[] = [
   "Running", "Cycling", "Rowing", "Jump Rope", "Elliptical", 
   "Stair Climber", "Swimming", "Walking", "Hiking", "Sprinting"
+];
+
+export const VALID_BODY_PARTS = [
+  "Abs", "Back", "Biceps", "Chest", "Forearms", "Legs", "Shoulders", "Triceps", "Cardio"
 ];
 
 export const BODY_PART_MAPPING: Record<string, string> = {
@@ -57,19 +63,38 @@ export const BODY_PART_MAPPING: Record<string, string> = {
   "Lunges": "Legs",
   "Leg Press": "Legs",
   "Face Pull": "Shoulders",
-  "Bicep Curl": "Arms",
-  "Tricep Extension": "Arms",
+  "Bicep Curl": "Biceps",
+  "Tricep Extension": "Triceps",
   "Lateral Raise": "Shoulders",
   "Push Up": "Chest",
-  "Dip": "Arms",
-  "Skullcrusher": "Arms",
+  "Dip": "Triceps",
+  "Skullcrusher": "Triceps",
   "Calf Raise": "Legs",
   "Bulgarian Split Squat": "Legs",
   "Romanian Deadlift": "Legs",
-  "Incline Bench Press": "Chest"
+  "Incline Bench Press": "Chest",
+  "Hammer Curl": "Biceps",
+  "Preacher Curl": "Biceps",
+  "Leg Extension": "Legs",
+  "Leg Curl": "Legs",
+  "Plank": "Abs",
+  "Crunch": "Abs",
+  "Russian Twist": "Abs",
+  "Hanging Leg Raise": "Abs",
+  "Cable Fly": "Chest",
+  "Lat Pulldown": "Back",
+  "Seated Row": "Back",
+  "Front Raise": "Shoulders",
+  "Reverse Fly": "Shoulders",
+  "Wrist Curl": "Forearms",
+  "Chin Up": "Back"
 };
 
-export const getBodyPart = (exerciseName: string): string => {
+export const getBodyPart = (exerciseName: string, customMapping?: Record<string, string>): string => {
+  if (DEFAULT_CARDIO_EXERCISES.includes(exerciseName)) return "Cardio";
+  if (customMapping && customMapping[exerciseName]) {
+    return customMapping[exerciseName];
+  }
   return BODY_PART_MAPPING[exerciseName] || "Other";
 };
 

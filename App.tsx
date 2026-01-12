@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [customExercises, setCustomExercises] = useState<string[]>([]);
+  const [customBodyParts, setCustomBodyParts] = useState<Record<string, string>>({});
 
   // Load Workouts
   useEffect(() => {
@@ -34,14 +35,22 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Load Custom Exercises
+  // Load Custom Exercises & Body Parts
   useEffect(() => {
-    const saved = localStorage.getItem('fitwise_exercises');
-    if (saved) {
+    const savedEx = localStorage.getItem('fitwise_exercises');
+    if (savedEx) {
       try {
-        setCustomExercises(JSON.parse(saved));
+        setCustomExercises(JSON.parse(savedEx));
       } catch (e) {
         console.error("Failed to parse exercises", e);
+      }
+    }
+    const savedBP = localStorage.getItem('fitwise_bodyparts');
+    if (savedBP) {
+      try {
+        setCustomBodyParts(JSON.parse(savedBP));
+      } catch (e) {
+        console.error("Failed to parse body parts", e);
       }
     }
   }, []);
@@ -56,6 +65,11 @@ const App: React.FC = () => {
     localStorage.setItem('fitwise_exercises', JSON.stringify(customExercises));
   }, [customExercises]);
 
+  // Save Body Parts
+  useEffect(() => {
+    localStorage.setItem('fitwise_bodyparts', JSON.stringify(customBodyParts));
+  }, [customBodyParts]);
+
   const handleSaveWorkout = (workout: Workout) => {
     const filtered = workouts.filter(w => w.id !== workout.id);
     setWorkouts([...filtered, workout].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
@@ -63,9 +77,13 @@ const App: React.FC = () => {
     setView('day');
   };
 
-  const handleAddCustomExercise = (name: string) => {
+  const handleAddCustomExercise = (name: string, bodyPart: string) => {
     if (!customExercises.includes(name) && !DEFAULT_EXERCISES.includes(name)) {
       setCustomExercises([...customExercises, name]);
+    }
+    // Always update body part mapping if provided, even if exercise exists (allows correction)
+    if (bodyPart) {
+      setCustomBodyParts(prev => ({ ...prev, [name]: bodyPart }));
     }
   };
 
@@ -135,6 +153,7 @@ const App: React.FC = () => {
           onCancel={() => setIsEditing(false)}
           availableExercises={allExercises}
           onAddExercise={handleAddCustomExercise}
+          customBodyParts={customBodyParts}
         />
       );
     }
@@ -212,7 +231,8 @@ const App: React.FC = () => {
         isOpen={isMenuOpen} 
         onClose={() => setIsMenuOpen(false)} 
         onNavigate={(v) => { 
-          setView(v); 
+          if (v === 'home') setView('day');
+          else setView(v); 
           setIsEditing(false);
         }}
         onExport={exportData}
@@ -258,7 +278,7 @@ const App: React.FC = () => {
           />
         )}
         
-        {view === 'stats' && <StatsView workouts={workouts} />}
+        {view === 'stats' && <StatsView workouts={workouts} customBodyParts={customBodyParts} />}
         {view === 'coach' && <AICoach workouts={workouts} />}
       </main>
     </div>
