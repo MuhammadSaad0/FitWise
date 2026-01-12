@@ -5,7 +5,7 @@ const GEMINI_API_KEY = process.env.API_KEY || '';
 
 const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
-const MODEL_NAME = "gemini-3-flash-preview";
+const MODEL_NAME = "gemini-2.5-flash-lite";
 
 const COACH_PERSONAS: Record<string, string> = {
   "Mike Mentzer": "You are Mike Mentzer. You advocate for High Intensity Training (HIT). You believe 99% of people overtrain. You despise junk volume. You are articulate, philosophical, intellectual, and extremely critical of wasted energy. You demand absolute failure and extended recovery. If they are doing more than a few sets per bodypart, roast them for wasting their life.",
