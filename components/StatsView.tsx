@@ -4,21 +4,24 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend, AreaChart, Area
 } from 'recharts';
 import { Search, Trophy, Scale, Calendar as CalendarIcon, Activity, Zap, Clock, Truck, Crown, Timer, MapPin, Mountain, Waves, Rocket } from 'lucide-react';
-import { Workout, getBodyPart, calculateOneRepMax, Exercise } from '../types';
+import { Workout, getBodyPart, calculateOneRepMax, Exercise, UnitSystem } from '../types';
 import { Card, SectionHeader } from './UI';
 
 interface StatsViewProps {
   workouts: Workout[];
   customBodyParts?: Record<string, string>;
+  unitSystem: UnitSystem;
 }
 
 // Muted, earthy/concrete palette
 const COLORS = ['#57534e', '#78716c', '#a8a29e', '#d6d3d1', '#e7e5e4', '#44403c']; 
 
-export const StatsView: React.FC<StatsViewProps> = ({ workouts, customBodyParts }) => {
+export const StatsView: React.FC<StatsViewProps> = ({ workouts, customBodyParts, unitSystem }) => {
   const [selectedExercise, setSelectedExercise] = useState('Bench Press');
   const [exerciseSearchOpen, setExerciseSearchOpen] = useState(false);
   const [metric, setMetric] = useState<'weight' | '1rm'>('1rm');
+
+  const isMetric = unitSystem === 'metric';
 
   // --- Calculations ---
 
@@ -27,7 +30,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ workouts, customBodyParts 
     let totalVolume = 0;
     let totalSets = 0;
     let totalReps = 0;
-    let totalDistance = 0; // km
+    let totalDistance = 0; // stored units
     let totalCardioTime = 0; // mins
     const distinctExercises = new Set();
 
@@ -162,23 +165,38 @@ export const StatsView: React.FC<StatsViewProps> = ({ workouts, customBodyParts 
 
     const favoriteDay = Object.entries(dayCounts).sort((a, b) => b[1] - a[1])[0];
     
-    const volume = lifetimeStats.volume; // lbs
-    const distance = lifetimeStats.distance; // km
+    const volume = lifetimeStats.volume; 
+    const distance = lifetimeStats.distance; 
     
+    // Benchmarks
+    // Pyramid Stone: 2500 kg or 5500 lbs
+    // T-Rex: 8000 kg or 15000 lbs (approx)
+    // Shuttle: 75000 kg or 165000 lbs
+    const stoneWeight = isMetric ? 2500 : 5500;
+    const tRexWeight = isMetric ? 8000 : 15000;
+    const shuttleWeight = isMetric ? 75000 : 165000;
+
+    // Marathon: 42.2 km or 26.2 mi
+    // English Channel: 33 km or 21 mi
+    // Everest: 8.85 km or 5.5 mi
+    const marathonDist = isMetric ? 42.2 : 26.2;
+    const channelDist = isMetric ? 33 : 21;
+    const everestDist = isMetric ? 8.85 : 5.5;
+
     return {
       durationHours: (totalDuration / 60).toFixed(1),
       favoriteDay: favoriteDay ? `${favoriteDay[0]} (${favoriteDay[1]})` : 'None',
       heaviestLift: { weight: maxWeight, name: maxWeightExercise },
       // Strength Feats
-      pyramidStones: (volume / 5500).toFixed(1), // ~2.5 tons / 5500 lbs
-      tRexs: (volume / 15000).toFixed(2), // ~15,000 lbs
-      spaceShuttles: (volume / 165000).toFixed(3), // ~165,000 lbs
+      pyramidStones: (volume / stoneWeight).toFixed(1),
+      tRexs: (volume / tRexWeight).toFixed(2),
+      spaceShuttles: (volume / shuttleWeight).toFixed(3),
       // Stamina Feats
-      marathons: (distance / 42.195).toFixed(1), // 42.195 km
-      englishChannels: (distance / 33).toFixed(2), // ~33 km
-      everests: (distance / 8.849).toFixed(2) // 8.849 km (height comparison)
+      marathons: (distance / marathonDist).toFixed(1),
+      englishChannels: (distance / channelDist).toFixed(2),
+      everests: (distance / everestDist).toFixed(2)
     };
-  }, [workouts, lifetimeStats]);
+  }, [workouts, lifetimeStats, isMetric]);
 
 
   if (workouts.length === 0) {
@@ -206,14 +224,14 @@ export const StatsView: React.FC<StatsViewProps> = ({ workouts, customBodyParts 
            <Scale className="text-stone-600 mb-2" size={20} />
            <div>
              <span className="text-xl md:text-2xl font-bold text-white font-mono block">{(lifetimeStats.volume / 1000).toFixed(1)}k</span>
-             <span className="text-[10px] text-stone-500 uppercase tracking-widest font-bold">Vol (lbs/kg)</span>
+             <span className="text-[10px] text-stone-500 uppercase tracking-widest font-bold">Vol ({isMetric ? 'kg' : 'lbs'})</span>
            </div>
         </Card>
         <Card className="flex flex-col items-start justify-between h-28 md:h-32 bg-stone-900/50">
            <MapPin className="text-stone-600 mb-2" size={20} />
            <div>
              <span className="text-xl md:text-2xl font-bold text-white font-mono block">{lifetimeStats.distance.toFixed(1)}</span>
-             <span className="text-[10px] text-stone-500 uppercase tracking-widest font-bold">Km Run</span>
+             <span className="text-[10px] text-stone-500 uppercase tracking-widest font-bold">{isMetric ? 'Km' : 'Mi'} Run</span>
            </div>
         </Card>
         <Card className="flex flex-col items-start justify-between h-28 md:h-32 bg-stone-900/50">

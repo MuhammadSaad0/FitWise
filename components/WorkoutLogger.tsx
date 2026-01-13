@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash2, Save, Search, X, Activity, Dumbbell, ChevronLeft, ArrowRight } from 'lucide-react';
-import { Workout, Exercise, WorkoutSet, DEFAULT_CARDIO_EXERCISES, VALID_BODY_PARTS, getBodyPart } from '../types';
+import { Workout, Exercise, WorkoutSet, DEFAULT_CARDIO_EXERCISES, VALID_BODY_PARTS, getBodyPart, UnitSystem } from '../types';
 import { Button, Input, Card } from './UI';
 
 interface WorkoutLoggerProps {
@@ -11,6 +11,7 @@ interface WorkoutLoggerProps {
   availableExercises: string[];
   onAddExercise: (name: string, bodyPart: string) => void;
   customBodyParts?: Record<string, string>;
+  unitSystem: UnitSystem;
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -22,7 +23,8 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
   onCancel,
   availableExercises,
   onAddExercise,
-  customBodyParts
+  customBodyParts,
+  unitSystem
 }) => {
   const [name, setName] = useState(initialWorkout?.name || '');
   const [exercises, setExercises] = useState<Exercise[]>(initialWorkout?.exercises || []);
@@ -133,6 +135,9 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
     onSave(workout);
   };
 
+  const distLabel = unitSystem === 'metric' ? 'km' : 'mi';
+  const weightLabel = unitSystem === 'metric' ? 'kg' : 'lbs';
+
   return (
     <div className="max-w-3xl mx-auto pb-48 animate-slideUp relative">
       <div className="sticky top-20 -mt-4 mb-6 z-30 bg-stone-950/95 backdrop-blur border-b border-stone-800 py-4 -mx-4 px-4 shadow-xl">
@@ -194,7 +199,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
 
             <div className="grid grid-cols-10 gap-1 md:gap-2 mb-2 text-[8px] md:text-[10px] text-stone-500 uppercase font-bold tracking-widest text-center">
               <div className="col-span-1">#</div>
-              <div className="col-span-3">{exercise.type === 'cardio' ? 'Dist (km)' : 'Load'}</div>
+              <div className="col-span-3">{exercise.type === 'cardio' ? `Dist (${distLabel})` : `Load (${weightLabel})`}</div>
               <div className="col-span-3">{exercise.type === 'cardio' ? 'Time (min)' : 'Reps'}</div>
               <div className="col-span-2">RPE</div>
               <div className="col-span-1"></div>
@@ -264,6 +269,7 @@ export const WorkoutLogger: React.FC<WorkoutLoggerProps> = ({
           customBodyParts={customBodyParts}
           onComplete={handleAddExerciseData}
           onAddExercise={onAddExercise}
+          unitSystem={unitSystem}
         />
       )}
     </div>
@@ -276,9 +282,10 @@ interface ExercisePickerProps {
   customBodyParts?: Record<string, string>;
   onComplete: (name: string, type: 'strength' | 'cardio', initialSet: WorkoutSet) => void;
   onAddExercise: (name: string, bodyPart: string) => void;
+  unitSystem: UnitSystem;
 }
 
-const ExercisePicker: React.FC<ExercisePickerProps> = ({ onClose, exercises, customBodyParts, onComplete, onAddExercise }) => {
+const ExercisePicker: React.FC<ExercisePickerProps> = ({ onClose, exercises, customBodyParts, onComplete, onAddExercise, unitSystem }) => {
   const [step, setStep] = useState<'bodyPart' | 'exercise' | 'data'>('bodyPart');
   const [selectedPart, setSelectedPart] = useState('');
   const [selectedExercise, setSelectedExercise] = useState('');
@@ -291,7 +298,8 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onClose, exercises, cus
   const [distance, setDistance] = useState<string>(''); 
   const [duration, setDuration] = useState<string>(''); 
 
-  const uniqueExercises = Array.from(new Set(exercises)).sort();
+  // Fix: Explicitly type Array.from to string[] to avoid unknown[] inference error
+  const uniqueExercises: string[] = Array.from<string>(new Set(exercises)).sort();
   
   const filteredExercises = uniqueExercises.filter(ex => {
     const part = getBodyPart(ex, customBodyParts);
@@ -321,6 +329,9 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onClose, exercises, cus
       setSelectedExercise(search);
       setStep('data');
   };
+
+  const distLabel = unitSystem === 'metric' ? 'km' : 'mi';
+  const weightLabel = unitSystem === 'metric' ? 'kg' : 'lbs';
 
   return (
     // FULL SCREEN CONTAINER: Fixed, Inset 0, Z-Index High, Flex Col, Dynamic Height
@@ -427,7 +438,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onClose, exercises, cus
                {isCardio ? (
                  <>
                    <Input 
-                     label="Distance (km)"
+                     label={`Distance (${distLabel})`}
                      type="number" 
                      placeholder="0" 
                      value={distance}
@@ -447,7 +458,7 @@ const ExercisePicker: React.FC<ExercisePickerProps> = ({ onClose, exercises, cus
                ) : (
                  <>
                    <Input 
-                     label="Weight (lbs)"
+                     label={`Weight (${weightLabel})`}
                      type="number" 
                      placeholder="0" 
                      value={weight}

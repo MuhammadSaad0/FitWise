@@ -1,10 +1,10 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { Workout } from "../types";
 
-const GEMINI_API_KEY = process.env.API_KEY || '';
+// Guideline: Use process.env.API_KEY directly.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-
+// Updated model name as requested
 const MODEL_NAME = "gemini-2.5-flash-lite";
 
 const COACH_PERSONAS: Record<string, string> = {
@@ -18,9 +18,11 @@ const COACH_PERSONAS: Record<string, string> = {
 export const getCoachFeedback = async (
   coachName: string,
   recentWorkouts: Workout[],
-  monthStats: { totalWorkouts: number; volume: number; consistency: string }
+  monthStats: { totalWorkouts: number; volume: number; consistency: string },
+  unitSystem: 'metric' | 'imperial'
 ) => {
-  if (!GEMINI_API_KEY) {
+  // Guideline: Assume API Key is present in process.env.API_KEY.
+  if (!process.env.API_KEY) {
     console.error("API Key is missing");
     throw new Error("API Key is missing");
   }
@@ -31,6 +33,9 @@ export const getCoachFeedback = async (
     ${persona}
 
     TASK: Analyze this user's recent training data and provide a brutal, honest assessment.
+    
+    CONTEXT:
+    - User is tracking in: ${unitSystem.toUpperCase()} (Keep this in mind for weights. 100kg is impressive, 100lbs is light for bench press).
     
     DATA:
     - Last 2 Weeks Workouts (Detailed): ${JSON.stringify(recentWorkouts.map(w => ({ date: w.date, name: w.name, exercises: w.exercises.map(e => ({ name: e.name, sets: e.sets.length, bestSet: e.sets.reduce((max, curr) => curr.weight > max.weight ? curr : max, e.sets[0]) })) })))}
@@ -59,7 +64,7 @@ export const getCoachFeedback = async (
 };
 
 export const generateCoachAudio = async (text: string, coachName: string) => {
-  if (!GEMINI_API_KEY) throw new Error("API Key missing");
+  if (!process.env.API_KEY) throw new Error("API Key missing");
 
   // Map personas to voices
   // Voices: Puck, Charon, Kore, Fenrir, Zephyr

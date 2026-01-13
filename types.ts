@@ -3,12 +3,13 @@ export interface WorkoutSet {
   reps?: number;
   weight?: number;
   rpe?: number; // Rate of Perceived Exertion (1-10)
-  distance?: number; // in km
+  distance?: number; // in km or miles depending on user setting
   duration?: number; // in minutes
   completed: boolean;
 }
 
 export type ExerciseType = 'strength' | 'cardio';
+export type UnitSystem = 'metric' | 'imperial';
 
 export interface Exercise {
   id: string;

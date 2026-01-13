@@ -1,15 +1,36 @@
-import React, { useState } from 'react';
-import { X, BarChart2, Download, Home, Dumbbell } from 'lucide-react';
+import React, { useRef } from 'react';
+import { X, BarChart2, Download, Home, Dumbbell, Scale, Upload } from 'lucide-react';
+import { UnitSystem } from '../types';
 
 interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onNavigate: (view: 'stats' | 'home' | 'coach') => void;
   onExport: (format: 'csv' | 'json') => void;
+  onImport: (file: File) => void;
+  unitSystem: UnitSystem;
+  onToggleUnitSystem: () => void;
 }
 
-export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate, onExport }) => {
+export const SideMenu: React.FC<SideMenuProps> = ({ 
+  isOpen, 
+  onClose, 
+  onNavigate, 
+  onExport, 
+  onImport,
+  unitSystem, 
+  onToggleUnitSystem 
+}) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   if (!isOpen) return null;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      onImport(e.target.files[0]);
+      onClose();
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -50,20 +71,47 @@ export const SideMenu: React.FC<SideMenuProps> = ({ isOpen, onClose, onNavigate,
           </button>
         </nav>
 
-        <div className="pt-8 border-t border-stone-900">
-          <p className="text-[10px] font-bold text-stone-700 uppercase tracking-widest mb-4 px-4">Export Data</p>
-          <button 
-            onClick={() => onExport('csv')}
-            className="w-full flex items-center gap-3 px-4 py-3 text-xs font-medium text-stone-500 hover:text-stone-300 hover:bg-stone-900 rounded transition-colors uppercase tracking-wider"
-          >
-            <Download size={14} /> CSV
-          </button>
-          <button 
-            onClick={() => onExport('json')}
-            className="w-full flex items-center gap-3 px-4 py-3 text-xs font-medium text-stone-500 hover:text-stone-300 hover:bg-stone-900 rounded transition-colors uppercase tracking-wider"
-          >
-            <Download size={14} /> JSON
-          </button>
+        <div className="pt-8 border-t border-stone-900 space-y-6">
+          <div>
+            <p className="text-[10px] font-bold text-stone-700 uppercase tracking-widest mb-4 px-4">Settings</p>
+            <button 
+              onClick={() => { onToggleUnitSystem(); onClose(); }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-medium text-stone-400 hover:text-white hover:bg-stone-900 rounded transition-colors uppercase tracking-wider"
+            >
+              <Scale size={14} /> 
+              Switch to {unitSystem === 'metric' ? 'Imperial (lbs)' : 'Metric (kg)'}
+            </button>
+          </div>
+
+          <div>
+            <p className="text-[10px] font-bold text-stone-700 uppercase tracking-widest mb-4 px-4">Data Management</p>
+            <button 
+              onClick={() => onExport('csv')}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-medium text-stone-500 hover:text-stone-300 hover:bg-stone-900 rounded transition-colors uppercase tracking-wider"
+            >
+              <Download size={14} /> Export CSV
+            </button>
+            <button 
+              onClick={() => onExport('json')}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-medium text-stone-500 hover:text-stone-300 hover:bg-stone-900 rounded transition-colors uppercase tracking-wider"
+            >
+              <Download size={14} /> Export JSON
+            </button>
+            
+            <input 
+              type="file" 
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".csv"
+              className="hidden"
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center gap-3 px-4 py-3 text-xs font-medium text-stone-500 hover:text-stone-300 hover:bg-stone-900 rounded transition-colors uppercase tracking-wider"
+            >
+              <Upload size={14} /> Import CSV
+            </button>
+          </div>
         </div>
       </div>
     </div>

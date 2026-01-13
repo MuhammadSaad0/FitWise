@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Volume2, Loader2, StopCircle } from 'lucide-react';
-import { Workout } from '../types';
+import { UnitSystem, Workout } from '../types';
 import { SectionHeader, Button } from './UI';
 import { getCoachFeedback, generateCoachAudio } from '../services/geminiService';
 
 interface AICoachProps {
   workouts: Workout[];
+  unitSystem: UnitSystem;
 }
 
 const COACHES = [
@@ -27,7 +28,7 @@ function decode(base64: string) {
   return bytes;
 }
 
-export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
+export const AICoach: React.FC<AICoachProps> = ({ workouts, unitSystem }) => {
   const [selectedCoach, setSelectedCoach] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -76,7 +77,7 @@ export const AICoach: React.FC<AICoachProps> = ({ workouts }) => {
     };
 
     try {
-      const result = await getCoachFeedback(selectedCoach, recentWorkouts, monthStats);
+      const result = await getCoachFeedback(selectedCoach, recentWorkouts, monthStats, unitSystem);
       setFeedback(result || "Coach is silent today.");
     } catch (e) {
       console.error(e);
